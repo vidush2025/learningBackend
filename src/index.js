@@ -12,7 +12,7 @@ connectDB()
 .then(() => {
     
     app.on("error", (err)=> {
-        console.log("MONGODB connection failed!!! ", err);
+        console.log("MONGODB connection failed!!!", err);
     })
     const currPort = process.env.PORT || 8080
     app.listen(currPort, () => {
