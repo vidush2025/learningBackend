@@ -24,9 +24,15 @@ const userSchema = new Schema({
         required: [true, "Name is required."],
         trim: true,
     },
-    avatar:{
-        type: String, //cloundinary url,
-        required: [true, "Avatar is required."]
+    avatar:{ //cloundinary url,
+        url: {
+            type: String, 
+            required: [true, "Avatar URL is required."]
+        },
+        public_id: {
+            type: String, 
+            required: [true, "Avatar public_id is required."]
+        },
     },
     coverimage:{
         type: String, //cloundinary url,
