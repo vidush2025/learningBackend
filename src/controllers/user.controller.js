@@ -18,7 +18,15 @@ const generateAccessAndRefreshTokens = async(userId) => {
         currUser.refreshToken = refreshToken;
 
         await currUser.save({validateBeforeSave: false});
-        return {accessToken, refreshToken};
+
+        // console.log("Access Token:", accessToken);
+        // console.log("Refresh Token:", refreshToken);
+
+        const tokens = {
+            accessToken, refreshToken
+        }
+
+        return tokens;
 
     }catch (error){
         throw new ApiError(500, "Something went wrong while generating refresh and access tokens.")
@@ -40,7 +48,6 @@ const registerUser = asyncHandler( async (req, res) => {
 
 
     const {fullname, email, username, password} = req.body
-    console.log("email:", email)
     
     if (
         [fullname, email, username, password].some((field) => field?.trim() === "")
@@ -52,8 +59,8 @@ const registerUser = asyncHandler( async (req, res) => {
         throw new ApiError(400, "Please provide a valid email address.");
     }
 
-    const existedusername = await User.findOne({username})
-    if(existedusername) throw new ApiError(409, "username already exists.")
+    const existedUsername = await User.findOne({username})
+    if(existedUsername) throw new ApiError(409, "username already exists.")
 
     const existedEmail = await User.findOne({email})
     if(existedEmail) throw new ApiError(409, "email already exists.")
@@ -81,7 +88,7 @@ const registerUser = asyncHandler( async (req, res) => {
     const newUser = await User.create({
         fullname,
         avatar,
-        coverImage: coverImage?.url || "",
+        ...(coverImage && { coverImage }),
         email,
         password,
         username: username.toLowerCase()
@@ -166,6 +173,11 @@ const logoutUser = asyncHandler(async(req, res) => {
         $set: {
             refreshToken: undefined,
         }
+        // can also be done as
+        // $unset: {
+        //     refreshToken: 1,
+            //unsets/ adds null value to whatever feild has "1"
+        // }
     },
 
     {
@@ -204,18 +216,21 @@ const refreshAccessToken = asyncHandler(async (req, res) => {
             secure: true
         }
     
-        const {generatedAccessToken, generatedRefreshToken} = await generateAccessAndRefreshTokens(currUser._id);
+        const tokens = await generateAccessAndRefreshTokens(currUser._id);
+
+        // console.log("Generated Access Token:", tokens.accessToken);
+        // console.log("Generated Refresh Token:", tokens.refreshToken);
     
         return res
         .status(200)
-        .cookie("accessToken", generatedAccessToken, options)
-        .cookie("refreshToken", generatedRefreshToken, options)
+        .cookie("accessToken", tokens.accessToken, options)
+        .cookie("refreshToken", tokens.refreshToken, options)
         .json(
             new ApiResponse(
                 200,
                 {
-                    accessToken: generatedAccessToken,
-                    refreshToken: generatedRefreshToken
+                    accessToken: tokens.accessToken,
+                    refreshToken: tokens.refreshToken
                 },
                 "Access Tokens refreshed successfully!"
             )
@@ -235,7 +250,7 @@ const changePassword = asyncHandler(async(req, res) => {
     if(!isPasswordCorrect)
         throw new ApiError(400, "Incorrect Password.")
 
-    if(newPassword !== confirmPassword)
+    if(newPassword === confirmPassword)
         throw new ApiError(401, "Please check new password.")
 
     currUser.password = newPassword;
@@ -289,7 +304,7 @@ const updateUserDetails = asyncHandler(async (req, res) => {
 })
 
 const changeAvatar = asyncHandler(async (req, res) => {
-    const oldAvatar = req.body.avatar;
+    const oldAvatarPublicId = req.body.public_id;
 
 
     const avatarLocalPath = req.file?.path
@@ -313,9 +328,9 @@ const changeAvatar = asyncHandler(async (req, res) => {
     if(!currUser)
         throw new ApiError(500, "Something went wrong while saving to database.")
 
-    if(oldAvatar.public_id){
+    if(oldAvatarPublicId){
         try {
-            await cloudinary.uploader.destroy(oldAvatar.public_id)
+            await cloudinary.uploader.destroy(oldAvatarPublicId)
         } catch (error) {
             console.error("Error deleting old avatar from Cloudinary:", error);
         }
@@ -333,6 +348,8 @@ const changeAvatar = asyncHandler(async (req, res) => {
 })
 
 const changeCoverImage = asyncHandler(async(req, res) => {
+    const oldCoverImagePublicId = req.body.public_id;
+
     const coverImageLocalPath = req.file?.path
 
     if(!coverImageLocalPath)
@@ -345,13 +362,21 @@ const changeCoverImage = asyncHandler(async(req, res) => {
     const currUser = await User.findByIdAndUpdate(req.user?._id,
         {
             $set: {
-                avatar: newCoverImage.url
+                coverImage: newCoverImage.url
             }
         }
     ).select("-password")
 
     if(!currUser)
         throw new ApiError(500, "Something went wrong while saving to database.")
+
+    if(oldCoverImagePublicId){
+        try {
+            await cloudinary.uploader.destroy(oldCoverImagePublicId)
+        } catch (error) {
+            console.error("Error deleting old coverImage from Cloudinary:", error);
+        }
+    }
 
     return res
     .status(200)
@@ -388,7 +413,7 @@ const getUserChannelProfie = asyncHandler(async(req, res) => {
                 from: "subscriptions",
                 localField: "_id",
                 foreignField: "subscriber",
-                as: "subscriberedTo"
+                as: "subscribedTo"
             }
         },
         {
@@ -428,7 +453,7 @@ const getUserChannelProfie = asyncHandler(async(req, res) => {
 
     return res
     .status(200)
-    .json(
+    .json(  
         new ApiResponse(
             200,
             channel[0],

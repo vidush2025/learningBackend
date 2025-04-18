@@ -17,7 +17,7 @@ router.route("/register").post(
         }
     ]),
         registerUser
-    )
+)
 // http://localhost:3000/api/vi/users/register
 
 router.route("/login").post(loginUser)
@@ -27,10 +27,11 @@ router.route("/login").post(loginUser)
 router.route("/logout").post(verifyJWT, logoutUser)
 router.route("/refreshTokens").post(refreshAccessToken)
 router.route("/changePassword").post(verifyJWT, changePassword)
+
 router.route("/currentUser").get(verifyJWT, getCurrentUser)
 
 router.route("/updateAccount").patch(verifyJWT, updateUserDetails)
-router.route("/avatarChange").patch(verifyJWT, upload.single("avatar"), changeAvatar)
+router.route("/changeAvatar").patch(verifyJWT, upload.single("avatar"), changeAvatar)
 router.route("/changeCoverImage").patch(verifyJWT, upload.single("coverImage"), changeCoverImage)
 
 router.route("/c/:username").get(verifyJWT, getUserChannelProfie)

@@ -34,8 +34,9 @@ const userSchema = new Schema({
             required: [true, "Avatar public_id is required."]
         },
     },
-    coverimage:{
-        type: String, //cloundinary url,
+    coverImage: {
+        url: { type: String },
+        public_id: { type: String }
     },
     watchHistory:[
         {
