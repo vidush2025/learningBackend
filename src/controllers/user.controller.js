@@ -306,7 +306,6 @@ const updateUserDetails = asyncHandler(async (req, res) => {
 const changeAvatar = asyncHandler(async (req, res) => {
     const oldAvatarPublicId = req.body.public_id;
 
-
     const avatarLocalPath = req.file?.path
 
     if(!avatarLocalPath)

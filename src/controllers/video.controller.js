@@ -139,17 +139,113 @@ const getVideoById = asyncHandler(async (req, res) => {
 
 const updateVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
+    const { title, description } = req.body;
     //TODO: update video details like title, description, thumbnail
 
+    const currVideo = await Video.findById(videoId)
+
+    if(!currVideo)
+        throw new ApiError(400, "Video not found.")
+
+    let updatedData = {
+        title,
+        description
+    };
+
+    const thumbnailLocalPath = req.file?.path
+    if(thumbnailLocalPath){
+        const newThumbnail = await uploadOnCloudinary(thumbnailLocalPath) 
+
+        if(!newThumbnail.url || !newThumbnail.public_id)
+            throw new ApiError (500, "Something went wrong while uploading to Cloudinary.")
+
+        const oldThumbnail = currVideo.thumbnail?.public_id
+        if(oldThumbnail)
+            await cloudinary.uploader.destroy(oldThumbnail)
+
+        updatedData.thumbnail = {
+            url : newThumbnail.url,
+            public_id: newThumbnail.public_id
+        }
+    }
+    
+    const updatedVideo = await Video.findByIdAndUpdate(videoId,
+        {
+            $set: updatedData,
+        },{new : true}
+    )
+    if(!updateVideo)
+        throw new ApiError(500, "Your video could not be updated.")
+
+    return res.status(200)
+    .json(
+        new ApiResponse(
+            200,
+            updatedVideo,
+            "Video has been updated successfully!"
+        )
+    )
 })
 
 const deleteVideo = asyncHandler(async (req, res) => {
     const { videoId } = req.params
     //TODO: delete video
+    if(!videoId)
+        throw new ApiError(400, "Video id is required.")
+
+    const currVideo = await Video.findById(videoId)
+    if(!currVideo)
+        throw new ApiError(400, "Video not found.")
+
+    try {
+        if(currVideo.videoFile?.public_id)
+            await cloudinary.uploader.destroy(currVideo.videoFile.public_id, { resource_type: "video" });
+
+        if(currVideo.thumbnail?.public_id)
+            await cloudinary.uploader.destroy(currVideo.thumbnail.public_id)
+
+        await Video.findByIdAndDelete(videoId)
+
+        return res.status(200).json(
+            new ApiResponse(
+                200,
+                {},
+                "Video has been deleted successfully!"
+            )
+        );
+
+    } catch (error) {
+        console.error("Error deleting video:", error);
+        throw new ApiError(500, "Failed to delete the video.");
+    }
 })
 
 const togglePublishStatus = asyncHandler(async (req, res) => {
     const { videoId } = req.params
+
+    if(!videoId)
+        throw new ApiError(400, "Video id is required.")
+
+    const currVideo = await Video.findByIdAndUpdate(videoId, 
+        {
+            $set: {
+                isPublished: !isPublished
+            }
+        }
+    )
+
+    if(!currVideo)
+        throw new ApiError(500, "Something went wrong while toggling publishment of the video.")
+
+    return res.status(200)
+    .json(
+        new ApiResponse(
+            200,
+            currVideo,
+            "Video-publishment has been toggled successfully!"
+        )
+    )
+
 })
 
 export {

@@ -7,8 +7,14 @@ const videoSchema = new Schema({
         required: true
     },
     thumbnail:{
-        type: String,
-        required: true
+        url: {
+            type: String, 
+            required: [true, "Thumbnail URL is required."]
+        },
+        public_id: {
+            type: String, 
+            required: [true, "Thumbnail public_id is required."]
+        },
     },
     owner:{
         type: Schema.Types.ObjectId,
